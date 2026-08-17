@@ -1,12 +1,14 @@
 # 出海鉴 · 源码安全审计（chuhaijian-codeaudit）
 
-**白盒 / 只读** 源码审计，并支持 **组件级结果库**：同一组件版本审过一次，后续清单直接命中缓存。
+白盒只读审计 + **组件结果库** + **锁文件依赖提取**。
 
-> 不访问业务攻击面利用 · 不执行 exploit
+```text
+识别组件（deps / surface-map）
+  → 查 ~/.chuhaijian/codeaudit.db
+  → 有则跳过；无则取源码审计并入库
+```
 
 姊妹项目：[chuhaijian-surface-map](https://github.com/tajleonbennis-maker/chuhaijian-surface-map)
-
----
 
 ## 安装
 
@@ -14,28 +16,23 @@
 pip install -e .
 ```
 
-## 1）扫本地仓库
+## 命令
 
 ```bash
-codeaudit run --repo /path/to/repo --out ./out
-```
+# 扫仓库
+codeaudit run --repo /path/to/repo --out ./out --emit-deps
 
-## 2）组件清单 + 缓存（推荐与 surface-map 衔接）
+# 只提取依赖清单
+codeaudit deps --repo /path/to/repo --out ./components.json
 
-```bash
-# 清单里带 name/version/source_url 或 source_path
-codeaudit from-inventory --inventory components.json --out ./comp-out
+# 清单审计（缓存命中则跳过）
+codeaudit from-inventory --inventory ./components.json --out ./comp-out
 
-# 再跑一次同一清单 → 已入库的会显示 cache_hit
-codeaudit from-inventory --inventory components.json
-
-codeaudit lookup --name express --version 4.18.2 --ecosystem npm
+codeaudit lookup --ecosystem npm --name express --version 4.18.2
 codeaudit cache-list
 ```
 
-流程说明见 [docs/component-pipeline.md](docs/component-pipeline.md)。
-
----
+支持锁文件线索：`package-lock.json` / `package.json` / `requirements*.txt` / `pyproject.toml` / `go.mod` / `Cargo.toml`。
 
 ## License
 

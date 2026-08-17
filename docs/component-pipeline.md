@@ -1,61 +1,33 @@
-# 组件识别 → codeaudit 缓存流水线
+# 组件流水线
 
-## 流程
+## 白盒（有仓库）
 
-```text
-surface-map（或手工）识别组件
-        │
-        ▼
-  components.json 清单
-        │
-        ▼
-codeaudit from-inventory
-        │
-        ├─ 库中已有 (ecosystem, name, version) → cache_hit，跳过
-        ├─ 无记录但有 source_path / source_url → 取源码 → 扫描 → 入库
-        └─ 无源码线索 → needs_source（等人补 URL/路径）
+```bash
+codeaudit deps --repo ./app --out components.json
+# application 项已带 source_path，可直接审
+codeaudit from-inventory --inventory components.json --out ./comp-out
 ```
 
-## 清单格式
+开源依赖默认 `needs_source`，可按需补：
 
 ```json
 {
-  "target": "https://example.com",
-  "components": [
-    {
-      "name": "express",
-      "version": "4.18.2",
-      "ecosystem": "npm",
-      "source_url": "https://github.com/expressjs/express.git"
-    },
-    {
-      "name": "my-app",
-      "version": "git",
-      "ecosystem": "application",
-      "source_path": "/path/to/authorized-repo"
-    }
-  ]
+  "name": "express",
+  "version": "4.18.2",
+  "ecosystem": "npm",
+  "source_url": "https://github.com/expressjs/express.git"
 }
 ```
 
-## 命令
+## 黑盒（surface-map）
 
 ```bash
-# 批量：有缓存跳过
-codeaudit from-inventory --inventory components.json --out ./comp-out
-
-# 查询单组件
-codeaudit lookup --ecosystem npm --name express --version 4.18.2
-
-# 列出缓存
-codeaudit cache-list
+surfacemap run --url https://authorized.example --emit-components --i-am-authorized --out ./out
+# 编辑 out/components.json 补源码后再：
+codeaudit from-inventory --inventory ./out/components.json
 ```
 
-数据库默认：`~/.chuhaijian/codeaudit.db`  
-可用环境变量 `CODEAUDIT_DB` 覆盖。
+## 缓存
 
-## 边界
-
-- 只读审计，不利用
-- 仅克隆清单里给出的公开 git URL 或本地授权路径
-- 不自动破解私有源码
+- DB: `CODEAUDIT_DB` 或 `~/.chuhaijian/codeaudit.db`
+- 源码缓存: `CODEAUDIT_SOURCE_CACHE` 或 `~/.chuhaijian/source-cache`

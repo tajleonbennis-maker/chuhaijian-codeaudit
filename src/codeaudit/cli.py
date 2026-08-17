@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI: codeaudit run | from-inventory | lookup | cache-list"""
+"""CLI: codeaudit run | deps | from-inventory | lookup | cache-list"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from codeaudit.scan import scan_repo
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="codeaudit",
-        description="出海鉴源码只读审计 — 支持组件缓存库，避免重复扫描",
+        description="出海鉴源码只读审计 — 组件缓存 + 锁文件依赖提取",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -24,6 +24,16 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--out", default="./out", help="报告输出目录")
     run_p.add_argument("--max-files", type=int, default=400)
     run_p.add_argument("--llm", action="store_true")
+    run_p.add_argument(
+        "--emit-deps",
+        action="store_true",
+        help="同时从锁文件提取 components.json",
+    )
+
+    deps_p = sub.add_parser("deps", help="仅从锁文件/清单提取依赖组件")
+    deps_p.add_argument("--repo", required=True)
+    deps_p.add_argument("--out", default="./components.json")
+    deps_p.add_argument("--max-deps", type=int, default=500)
 
     inv_p = sub.add_parser(
         "from-inventory",
@@ -64,6 +74,31 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[OK] 发现 {len(findings)} 条线索")
         for p in paths:
             print(f"  → {p}")
+        if args.emit_deps:
+            from codeaudit.lockfiles import inventory_from_repo
+
+            inv = inventory_from_repo(repo)
+            inv_path = out / "components.json"
+            inv_path.write_text(json.dumps(inv, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  → deps: {inv_path} ({len(inv.get('components') or [])} 项)")
+            print("  下一步: codeaudit from-inventory --inventory", str(inv_path))
+        return 0
+
+    if args.cmd == "deps":
+        from codeaudit.lockfiles import inventory_from_repo
+
+        repo = Path(args.repo).resolve()
+        if not repo.is_dir():
+            print(f"[ERR] 不是目录: {repo}", file=sys.stderr)
+            return 1
+        inv = inventory_from_repo(repo, max_deps=args.max_deps)
+        out = Path(args.out).resolve()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(inv, ensure_ascii=False, indent=2), encoding="utf-8")
+        n = len(inv.get("components") or [])
+        print(f"[OK] 提取 {n} 个组件 → {out}")
+        print("下一步: codeaudit from-inventory --inventory", str(out))
+        print("提示: 开源包默认无 source_url，需补全或只审 application 的 source_path")
         return 0
 
     if args.cmd == "from-inventory":
@@ -93,7 +128,6 @@ def main(argv: list[str] | None = None) -> int:
                 f"  - {r.get('name')}@{r.get('version')}: {r.get('status')} "
                 f"findings={r.get('findings_count', '-')}"
             )
-        # 机器可读摘要
         summary_path = (out or inv.parent) / "inventory_audit_summary.json"
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
