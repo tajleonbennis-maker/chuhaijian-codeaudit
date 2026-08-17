@@ -1,14 +1,6 @@
 # 出海鉴 · 源码安全审计（chuhaijian-codeaudit）
 
-白盒只读审计 + **组件结果库** + **锁文件依赖提取**。
-
-```text
-识别组件（deps / surface-map）
-  → 查 ~/.chuhaijian/codeaudit.db
-  → 有则跳过；无则取源码审计并入库
-```
-
-姊妹项目：[chuhaijian-surface-map](https://github.com/tajleonbennis-maker/chuhaijian-surface-map)
+只读源码审计 + **组件结果库** + **锁文件依赖解析**。
 
 ## 安装
 
@@ -16,23 +8,25 @@
 pip install -e .
 ```
 
-## 命令
+## 常用命令
 
 ```bash
 # 扫仓库
 codeaudit run --repo /path/to/repo --out ./out --emit-deps
 
-# 只提取依赖清单
+# 只抽依赖
 codeaudit deps --repo /path/to/repo --out ./components.json
 
-# 清单审计（缓存命中则跳过）
+# 清单审计（有缓存则跳过）
 codeaudit from-inventory --inventory ./components.json --out ./comp-out
 
-codeaudit lookup --ecosystem npm --name express --version 4.18.2
+codeaudit lookup --ecosystem npm --name lodash --version 4.17.21
 codeaudit cache-list
 ```
 
-支持锁文件线索：`package-lock.json` / `package.json` / `requirements*.txt` / `pyproject.toml` / `go.mod` / `Cargo.toml`。
+详见 [docs/component-pipeline.md](docs/component-pipeline.md)
+
+姊妹项目：[surface-map](https://github.com/tajleonbennis-maker/chuhaijian-surface-map)
 
 ## License
 
