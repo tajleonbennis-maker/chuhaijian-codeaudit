@@ -1,56 +1,42 @@
 # 出海鉴 · 源码安全审计（chuhaijian-codeaudit）
 
-**白盒 / 只读** 源码安全审计：扫描本地仓库中的常见风险线索，输出 Markdown + JSON 报告。
+**白盒 / 只读** 源码审计，并支持 **组件级结果库**：同一组件版本审过一次，后续清单直接命中缓存。
 
-> **不**访问业务 URL · **不**执行漏洞利用 · **不**生成打站 PoC
+> 不访问业务攻击面利用 · 不执行 exploit
 
 姊妹项目：[chuhaijian-surface-map](https://github.com/tajleonbennis-maker/chuhaijian-surface-map)
 
 ---
 
-## 现在可用（v0.1）
-
-基于**确定性启发式规则**的本地扫描（密钥形态、SQL 拼接线索、`shell=True`、`eval`、不安全反序列化、调试开关等）。可选调用国产/兼容 LLM 做中文摘要（`--llm`）。
-
-### 安装
+## 安装
 
 ```bash
-git clone https://github.com/tajleonbennis-maker/chuhaijian-codeaudit.git
-cd chuhaijian-codeaudit
 pip install -e .
 ```
 
-### 运行
+## 1）扫本地仓库
 
 ```bash
-# 只读扫描本地仓库
-codeaudit run --repo /path/to/your-repo --out ./out
-
-# 可选：LLM 摘要（需 API Key）
-export DEEPSEEK_API_KEY=sk-...
-# 或 AUDIT_AI_API_KEY + AUDIT_AI_BASE_URL + AUDIT_AI_MODEL
-codeaudit run --repo /path/to/your-repo --out ./out --llm
+codeaudit run --repo /path/to/repo --out ./out
 ```
 
-输出：
+## 2）组件清单 + 缓存（推荐与 surface-map 衔接）
 
-- `out/report.md` — 可读报告  
-- `out/findings.json` — 结构化结果  
+```bash
+# 清单里带 name/version/source_url 或 source_path
+codeaudit from-inventory --inventory components.json --out ./comp-out
 
----
+# 再跑一次同一清单 → 已入库的会显示 cache_hit
+codeaudit from-inventory --inventory components.json
 
-## 边界
+codeaudit lookup --name express --version 4.18.2 --ecosystem npm
+codeaudit cache-list
+```
 
-| 会做 | 不会做 |
-|------|--------|
-| 只读读文件、模式匹配 | 访问线上目标 |
-| 报告位置与修复建议方向 | 真实利用 / 攻击 payload |
-| 可选 LLM 总结（防御性） | 修改业务数据 |
-
-详见 [SAFETY.md](SAFETY.md)、[docs/scope.md](docs/scope.md)。
+流程说明见 [docs/component-pipeline.md](docs/component-pipeline.md)。
 
 ---
 
 ## License
 
-AGPL-3.0-or-later（见 `pyproject.toml`）。
+AGPL-3.0-or-later
