@@ -1,0 +1,21 @@
+[project]
+name = "chuhaijian-codeaudit"
+version = "0.1.0"
+description = "出海鉴 · 白盒源码只读安全审计（无利用）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["urllib3>=2.0"]
+
+[project.scripts]
+codeaudit = "codeaudit.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
